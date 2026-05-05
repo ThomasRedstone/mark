@@ -40,6 +40,10 @@ type Config struct {
 	Password              string
 	PageID                string
 	InsecureSkipTLSVerify bool
+	// CloudID is the Atlassian site Cloud ID required for scoped API tokens
+	// (ATSTT… prefix). When non-empty, BaseURL is rewritten to the
+	// api.atlassian.com/ex/confluence/<CloudID>/wiki form before use.
+	CloudID string
 
 	// File selection
 	Files string
@@ -91,7 +95,16 @@ func (c Config) output() io.Writer {
 
 // Run processes all files matching Config.Files and publishes them to Confluence.
 func Run(config Config) error {
-	api := confluence.NewAPI(config.BaseURL, config.Username, config.Password, config.InsecureSkipTLSVerify)
+	baseURL := config.BaseURL
+	if config.CloudID != "" {
+		var err error
+		baseURL, err = confluence.RewriteURLForScopedToken(baseURL, config.CloudID)
+		if err != nil {
+			return fmt.Errorf("unable to rewrite base URL for scoped token: %w", err)
+		}
+		log.Debug().Msgf("scoped token mode: base URL rewritten to %s", baseURL)
+	}
+	api := confluence.NewAPI(baseURL, config.Username, config.Password, config.InsecureSkipTLSVerify)
 
 	files, err := doublestar.FilepathGlob(config.Files)
 	if err != nil {

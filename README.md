@@ -886,6 +886,7 @@ GLOBAL OPTIONS:
    --features string [ --features string ]  Enables optional features. Current features: d2, mermaid, mention, mkdocsadmonitions (default: "mermaid", "mention") [$MARK_FEATURES]
    --insecure-skip-tls-verify               skip TLS certificate verification (useful for self-signed certificates) [$MARK_INSECURE_SKIP_TLS_VERIFY]
    --image-align string                     set image alignment (left, center, right). Can be overridden per-file via the Image-Align header. [$MARK_IMAGE_ALIGN]
+   --cloud-id string                        Atlassian Cloud ID for use with scoped API tokens (ATSTT…). When set, the base URL is rewritten to https://api.atlassian.com/ex/confluence/<cloud-id>/wiki. Find your Cloud ID at https://<site>.atlassian.net/_edge/tenant_info. [$MARK_CLOUD_ID]
    --help, -h                               show help
    --version, -v                            print the version
 ```
@@ -902,6 +903,55 @@ title-from-h1 = true
 drop-h1 = true
 image-align = "center"
 ```
+
+### Scoped API Tokens (Confluence Cloud)
+
+> **Action required by May 12, 2026:** Atlassian is deprecating classic (unscoped)
+> API tokens. After that date, only scoped service-account tokens will work on
+> Confluence Cloud.
+
+Scoped tokens (which start with `ATSTT…`) require requests to be sent to
+`https://api.atlassian.com/ex/confluence/<cloud-id>/wiki/…` instead of the
+site-specific URL. Mark handles this transparently when you supply your Cloud ID.
+
+**Finding your Cloud ID:**
+
+```bash
+curl https://<your-site>.atlassian.net/_edge/tenant_info
+# → {"cloudId":"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", ...}
+```
+
+**Option 1 – Explicit Cloud ID (recommended):**
+
+Pass `--cloud-id` (or set `MARK_CLOUD_ID`, or add `cloud-id` to your TOML config):
+
+```bash
+mark -u user@example.com -p ATSTT... \
+     -b https://mysite.atlassian.net/wiki \
+     --cloud-id xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+     -f docs/**/*.md
+```
+
+TOML equivalent:
+
+```toml
+username  = "user@example.com"
+password  = "ATSTT..."
+base-url  = "https://mysite.atlassian.net/wiki"
+cloud-id  = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+```
+
+**Option 2 – Auto-discovery:**
+
+If `--cloud-id` is not set, the token starts with `ATSTT`, and the base URL
+contains `.atlassian.net`, Mark will automatically fetch the Cloud ID from the
+`_edge/tenant_info` endpoint and log what it found. If discovery fails, Mark
+falls through to the original URL (which will likely return a 403 from the
+Atlassian gateway).
+
+**Authentication:** Scoped tokens use the same HTTP Basic Auth scheme as classic
+tokens (`username:token` Base64-encoded). No change to your username/password
+flags is needed — just supply the scoped token as the password.
 
 **NOTE**: Labels aren't supported when using `minor-edit`!
 
