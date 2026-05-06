@@ -220,6 +220,12 @@ var Flags = []cli.Flag{
 		Sources: cli.NewValueSourceChain(cli.EnvVar("MARK_INSECURE_SKIP_TLS_VERIFY"), altsrctoml.TOML("insecure-skip-tls-verify", altsrc.NewStringPtrSourcer(&filename))),
 	},
 	&cli.StringFlag{
+		Name:    "cloud-id",
+		Value:   "",
+		Usage:   "Atlassian Cloud ID for use with scoped API tokens (ATSTT…). When set, the base URL is rewritten to https://api.atlassian.com/ex/confluence/<cloud-id>/wiki. Find your Cloud ID at https://<site>.atlassian.net/_edge/tenant_info.",
+		Sources: cli.NewValueSourceChain(cli.EnvVar("MARK_CLOUD_ID"), altsrctoml.TOML("cloud-id", altsrc.NewStringPtrSourcer(&filename))),
+	},
+	&cli.StringFlag{
 		Name:    "image-align",
 		Value:   "",
 		Usage:   "set image alignment (left, center, right). Can be overridden per-file via the Image-Align header.",

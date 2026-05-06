@@ -910,7 +910,10 @@ func (api *API) RestrictPageUpdates(
 ) error {
 	var err error
 
-	if strings.HasSuffix(api.rest.Api.BaseUrl.Host, "jira.com") || strings.HasSuffix(api.rest.Api.BaseUrl.Host, "atlassian.net") {
+	host := api.rest.Api.BaseUrl.Host
+	if strings.HasSuffix(host, "jira.com") ||
+		strings.HasSuffix(host, "atlassian.net") ||
+		host == "api.atlassian.com" {
 		err = api.RestrictPageUpdatesCloud(page, allowedUser)
 	} else {
 		err = api.RestrictPageUpdatesServer(page, allowedUser)

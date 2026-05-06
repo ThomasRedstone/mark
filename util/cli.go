@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	mark "github.com/kovetskiy/mark/v16"
+	"github.com/kovetskiy/mark/v16/confluence"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
@@ -78,6 +79,23 @@ func RunMark(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	cloudID := cmd.String("cloud-id")
+
+	// Auto-discover Cloud ID when the token looks like a scoped token (ATSTT…)
+	// and the base URL points at an atlassian.net site, but no cloud-id was
+	// explicitly provided. Print an info line so the user can see it happened.
+	if cloudID == "" &&
+		strings.HasPrefix(creds.Password, "ATSTT") &&
+		strings.Contains(creds.BaseURL, ".atlassian.net") {
+		discovered, discoverErr := confluence.FetchCloudID(creds.BaseURL)
+		if discoverErr != nil {
+			log.Info().Msgf("scoped token detected but cloud ID auto-discovery failed (%v); proceeding with original URL", discoverErr)
+		} else {
+			cloudID = discovered
+			log.Info().Msgf("scoped token detected: auto-discovered cloud ID %s for %s", cloudID, creds.BaseURL)
+		}
+	}
+
 	log.Debug().Msg("config:")
 	for _, f := range cmd.Flags {
 		flag := f.Names()
@@ -96,6 +114,7 @@ func RunMark(ctx context.Context, cmd *cli.Command) error {
 		Password:              creds.Password,
 		PageID:                creds.PageID,
 		InsecureSkipTLSVerify: cmd.Bool("insecure-skip-tls-verify"),
+		CloudID:               cloudID,
 
 		Files: cmd.String("files"),
 
