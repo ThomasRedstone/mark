@@ -216,7 +216,10 @@ func setTitleFromFilename(meta *Meta, filename string) {
 
 // ExtractDocumentLeadingH1 will extract leading H1 heading
 func ExtractDocumentLeadingH1(markdown []byte) string {
-	h1 := regexp.MustCompile(`#[^#]\s*(.*)\s*\n`)
+	// An H1 is a line-leading "# " (whitespace after the marker is required,
+	// per CommonMark) — anything else, such as a script shebang ("#!/usr/bin/env")
+	// or a mid-line "#", is not a heading.
+	h1 := regexp.MustCompile(`(?m)^#[ \t]+(.*?)\s*$`)
 	groups := h1.FindSubmatch(markdown)
 	if groups == nil {
 		return ""

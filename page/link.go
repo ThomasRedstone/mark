@@ -88,10 +88,10 @@ func resolveLink(
 	var result string
 
 	if len(link.filename) > 0 {
-		filepath := filepath.Join(base, link.filename)
+		target := filepath.Join(base, link.filename)
 
-		log.Trace().Msgf("filepath: %s", filepath)
-		stat, err := os.Stat(filepath)
+		log.Trace().Msgf("filepath: %s", target)
+		stat, err := os.Stat(target)
 		if err != nil {
 			return "", nil
 		}
@@ -100,15 +100,15 @@ func resolveLink(
 			return "", nil
 		}
 
-		linkContents, err := os.ReadFile(filepath)
+		linkContents, err := os.ReadFile(target)
 		if err != nil {
-			return "", fmt.Errorf("read file %s: %w", filepath, err)
+			return "", fmt.Errorf("read file %s: %w", target, err)
 		}
 
 		contentType := http.DetectContentType(linkContents)
 		// Check if the MIME type starts with "text/"
 		if !strings.HasPrefix(contentType, "text/") {
-			log.Debug().Msgf("Ignoring link to file %q: detected content type %v", filepath, contentType)
+			log.Debug().Msgf("Ignoring link to file %q: detected content type %v", target, contentType)
 			return "", nil
 		}
 
@@ -118,15 +118,18 @@ func resolveLink(
 			[]byte("\n"),
 		)
 
-		// This helps to determine if found link points to file that's
-		// not markdown or have mark required metadata
-		linkMeta, _, err := metadata.ExtractMeta(linkContents, spaceForLinks, titleFromH1, titleFromFilename, filepath, parents, titleAppendGeneratedHash, "")
+		if !linkTargetIsPage(target, linkContents) {
+			log.Debug().Msgf("Ignoring link to non-markdown file %q without mark metadata", target)
+			return "", nil
+		}
+
+		linkMeta, _, err := metadata.ExtractMeta(linkContents, spaceForLinks, titleFromH1, titleFromFilename, target, parents, titleAppendGeneratedHash, "")
 		if err != nil {
 			log.Error().
 				Err(err).
 				Msgf(
 					"unable to extract metadata from %q; ignoring the relative link",
-					filepath,
+					target,
 				)
 
 			return "", nil
@@ -145,7 +148,7 @@ func resolveLink(
 
 		result, err = getConfluenceLink(api, linkMeta.Space, linkMeta.Title)
 		if err != nil {
-			return "", fmt.Errorf("find confluence page (file=%s, space=%s, title=%s): %w", filepath, linkMeta.Space, linkMeta.Title, err)
+			return "", fmt.Errorf("find confluence page (file=%s, space=%s, title=%s): %w", target, linkMeta.Space, linkMeta.Title, err)
 		}
 
 		if result == "" {
@@ -158,6 +161,24 @@ func resolveLink(
 	}
 
 	return result, nil
+}
+
+// linkTargetIsPage reports whether a linked local file can correspond to a
+// Confluence page: markdown documents always can, while other text files
+// (scripts, configs, source code) qualify only when they explicitly carry
+// mark metadata headers. Without this gate, --title-from-h1 /
+// --title-from-filename / --space would fabricate metadata for any text file
+// and trigger a Confluence page lookup with a nonsense title (e.g. a script's
+// shebang line).
+func linkTargetIsPage(target string, contents []byte) bool {
+	switch strings.ToLower(filepath.Ext(target)) {
+	case ".md", ".markdown":
+		return true
+	}
+
+	meta, _, err := metadata.ExtractMeta(contents, "", false, false, target, nil, false, "")
+
+	return err == nil && meta != nil
 }
 
 func SubstituteLinks(markdown []byte, links []LinkSubstitution) []byte {

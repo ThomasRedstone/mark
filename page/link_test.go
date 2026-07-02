@@ -3,6 +3,8 @@ package page
 import (
 	"encoding/base64"
 	"encoding/binary"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -53,6 +55,48 @@ func TestParseLinks(t *testing.T) {
 
 	assert.Equal(t, "example.md", links[7].full)
 	assert.Equal(t, len(links), 8)
+}
+
+func TestLinkTargetIsPage(t *testing.T) {
+	tests := []struct {
+		name     string
+		target   string
+		contents string
+		expected bool
+	}{
+		{"markdown file", "docs/setup.md", "# Setup\n", true},
+		{"markdown extension uppercase", "docs/SETUP.MD", "# Setup\n", true},
+		{"markdown long extension", "docs/setup.markdown", "# Setup\n", true},
+		{"script with shebang", "tools/run.js", "#!/usr/bin/env node\nconsole.log(1)\n", false},
+		{"plain text file", "notes.txt", "some notes\n", false},
+		{"non-markdown file with mark metadata", "page.txt", "<!-- Space: DOC -->\n<!-- Title: Example -->\n\nbody\n", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, linkTargetIsPage(tt.target, []byte(tt.contents)))
+		})
+	}
+}
+
+// A relative link to a source file must be ignored, not resolved as a
+// Confluence page — even when --space/--title-from-h1 would otherwise
+// fabricate metadata for it (a shebang line is not a page title). The nil API
+// guarantees the test fails with a panic if a Confluence lookup is attempted.
+func TestResolveLinkIgnoresSourceFiles(t *testing.T) {
+	dir := t.TempDir()
+	err := os.WriteFile(
+		filepath.Join(dir, "run.js"),
+		[]byte("#!/usr/bin/env node\nconsole.log(1)\n"),
+		0o644,
+	)
+	assert.NoError(t, err)
+
+	link := markdownLink{full: "./run.js", filename: "./run.js"}
+
+	result, err := resolveLink(nil, dir, link, "SOFTC", true, false, nil, false)
+	assert.NoError(t, err)
+	assert.Equal(t, "", result)
 }
 
 func TestEncodeTinyLinkID(t *testing.T) {

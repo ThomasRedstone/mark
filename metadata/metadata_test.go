@@ -29,6 +29,27 @@ func TestExtractDocumentLeadingH1(t *testing.T) {
 	assert.Equal(t, "a", actual)
 }
 
+func TestExtractDocumentLeadingH1OnlyMatchesRealHeadings(t *testing.T) {
+	tests := []struct {
+		name     string
+		markdown string
+		expected string
+	}{
+		{"shebang is not a heading", "#!/usr/bin/env node\nconsole.log(1)\n", ""},
+		{"mid-line hash is not a heading", "fixes issue #12 in prod\n# Actual Title\n", "Actual Title"},
+		{"no space after hash is not a heading", "#nope\n# Yes\n", "Yes"},
+		{"h2 is not an h1", "## Subheading\nbody\n", ""},
+		{"heading without trailing newline", "# Title", "Title"},
+		{"trailing spaces are trimmed", "# Title  \n", "Title"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, ExtractDocumentLeadingH1([]byte(tt.markdown)))
+		})
+	}
+}
+
 func TestSetTitleFromFilename(t *testing.T) {
 	t.Run("set title from filename", func(t *testing.T) {
 		meta := &Meta{Title: ""}
