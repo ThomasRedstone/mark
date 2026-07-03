@@ -27,6 +27,7 @@ const (
 	HeaderSidebar     = `Sidebar`
 	ContentAppearance = `Content-Appearance`
 	HeaderImageAlign  = `Image-Align`
+	HeaderOwner       = `Owner`
 )
 
 type Meta struct {
@@ -41,6 +42,9 @@ type Meta struct {
 	Labels            []string
 	ContentAppearance string
 	ImageAlign        string
+	// Owner is the Atlassian accountId the page's ownership is transferred to
+	// after publishing (Confluence Cloud only).
+	Owner string
 }
 
 const (
@@ -134,6 +138,9 @@ func ExtractMeta(data []byte, spaceFromCli string, titleFromH1 bool, titleFromFi
 
 		case HeaderImageAlign:
 			meta.ImageAlign = strings.ToLower(strings.TrimSpace(value))
+
+		case HeaderOwner:
+			meta.Owner = strings.TrimSpace(value)
 
 		default:
 			log.Error().

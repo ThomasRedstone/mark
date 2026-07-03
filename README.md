@@ -83,6 +83,12 @@ You can set the alignment for all images in the page. Common values are `left`, 
 
 **Note**: Images with width >= 760px automatically use `center` instead of the configured alignment, as Confluence requires this for wide images.
 
+```markdown
+<!-- Owner: 712020:35f9ab2f-0000-0000-0000-6da6d57a51e9 -->
+```
+
+Transfers page ownership (the "Owned by" byline on Confluence Cloud) to the given Atlassian accountId after publishing. The transfer is skipped when the page already has that owner, and a failure to transfer — for example when the page is already owned by another user and the publishing account is not a space admin — is logged as a warning without failing the publish. Confluence Cloud only; ownership does not exist on Server/Data Center.
+
 Mark supports Go templates, which can be included into article by using path
 to the template relative to current working dir, e.g.:
 

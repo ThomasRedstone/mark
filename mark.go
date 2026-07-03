@@ -272,6 +272,10 @@ func ProcessFile(file string, api *confluence.API, config Config) (*confluence.P
 	}
 
 	if config.CompileOnly || config.DryRun {
+		if config.DryRun && meta != nil && meta.Owner != "" {
+			log.Info().Msgf("dry-run: would ensure page owner is account %q", meta.Owner)
+		}
+
 		if config.DropH1 {
 			log.Info().Msg("the leading H1 heading will be excluded from the Confluence output")
 		}
@@ -473,6 +477,23 @@ func ProcessFile(file string, api *confluence.API, config Config) (*confluence.P
 	if meta != nil {
 		if err := updateLabels(api, target, labels); err != nil {
 			return nil, err
+		}
+	}
+
+	// Ownership transfer is best-effort: once a page is owned by a human,
+	// only that owner or a space admin can move it again, so a failure here
+	// (typically 403) must not fail the publish.
+	if meta != nil && meta.Owner != "" {
+		changed, err := api.EnsurePageOwner(target.ID, meta.Owner)
+		switch {
+		case err != nil:
+			log.Warn().Err(err).Msgf(
+				"unable to set owner of page %q to account %q; page content was still published",
+				target.Title,
+				meta.Owner,
+			)
+		case changed:
+			log.Info().Msgf("page %q ownership transferred to account %q", target.Title, meta.Owner)
 		}
 	}
 

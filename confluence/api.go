@@ -25,6 +25,10 @@ type User struct {
 type API struct {
 	rest *gopencils.Resource
 
+	// restV2 targets the Confluence Cloud v2 REST API (<base>/api/v2). Some
+	// page properties — currently ownership — are only writable through v2.
+	restV2 *gopencils.Resource
+
 	// it's deprecated accordingly to Atlassian documentation,
 	// but it's only way to set permissions
 	json    *gopencils.Resource
@@ -151,22 +155,29 @@ func NewAPI(baseURL string, username string, password string, insecureSkipVerify
 	}
 
 	rest := gopencils.Api(baseURL+"/rest/api", auth, httpClient, 3) // set option for 3 retries on failure
+	restV2 := gopencils.Api(baseURL+"/api/v2", auth, httpClient, 3)
 	if username == "" {
 		if rest.Headers == nil {
 			rest.Headers = http.Header{}
 		}
 		rest.SetHeader("Authorization", fmt.Sprintf("Bearer %s", password))
+		if restV2.Headers == nil {
+			restV2.Headers = http.Header{}
+		}
+		restV2.SetHeader("Authorization", fmt.Sprintf("Bearer %s", password))
 	}
 
 	json := gopencils.Api(baseURL+"/rpc/json-rpc/confluenceservice-v2", auth, httpClient, 3)
 
 	if zerolog.GlobalLevel() == zerolog.TraceLevel {
 		rest.Logger = &tracer{"rest:"}
+		restV2.Logger = &tracer{"rest-v2:"}
 		json.Logger = &tracer{"json-rpc:"}
 	}
 
 	return &API{
 		rest:    rest,
+		restV2:  restV2,
 		json:    json,
 		BaseURL: baseURL,
 	}

@@ -82,6 +82,26 @@ func TestSetTitleFromFilename(t *testing.T) {
 	})
 }
 
+func TestExtractMetaOwner(t *testing.T) {
+	t.Run("owner header is captured", func(t *testing.T) {
+		data := []byte("<!-- Space: DOC -->\n<!-- Title: Example -->\n<!-- Owner: 712020:35f9ab2f-1111-2222-3333-6da6d57a51e9 -->\n\nbody\n")
+
+		meta, _, err := ExtractMeta(data, "", false, false, "", nil, false, "")
+		assert.NoError(t, err)
+		assert.NotNil(t, meta)
+		assert.Equal(t, "712020:35f9ab2f-1111-2222-3333-6da6d57a51e9", meta.Owner)
+	})
+
+	t.Run("owner defaults to empty", func(t *testing.T) {
+		data := []byte("<!-- Space: DOC -->\n<!-- Title: Example -->\n\nbody\n")
+
+		meta, _, err := ExtractMeta(data, "", false, false, "", nil, false, "")
+		assert.NoError(t, err)
+		assert.NotNil(t, meta)
+		assert.Equal(t, "", meta.Owner)
+	})
+}
+
 func TestExtractMetaContentAppearance(t *testing.T) {
 	t.Run("default fills missing content appearance", func(t *testing.T) {
 		data := []byte("<!-- Space: DOC -->\n<!-- Title: Example -->\n\nbody\n")
