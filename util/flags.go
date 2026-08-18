@@ -55,7 +55,7 @@ var Flags = []cli.Flag{
 	},
 	&cli.BoolFlag{
 		Name:    "strip-linebreaks",
-		Value:   false,
+		Value:   true,
 		Aliases: []string{"L"},
 		Usage:   "remove linebreaks inside of tags, to accommodate non-standard Confluence behavior",
 		Sources: cli.NewValueSourceChain(cli.EnvVar("MARK_STRIP_LINEBREAKS"), altsrctoml.TOML("strip-linebreaks", altsrc.NewStringPtrSourcer(&filename))),
